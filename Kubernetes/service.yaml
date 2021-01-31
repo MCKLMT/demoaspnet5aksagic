@@ -3,8 +3,9 @@ kind: Service
 metadata:
   name: webappdotnet5
 spec:
-  type: LoadBalancer
-  ports:
-  - port: 80
   selector:
     app: webappdotnet5
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80

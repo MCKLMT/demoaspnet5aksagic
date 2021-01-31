@@ -116,7 +116,7 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
-            az acr build --registry "${{ env.registryName }}" --image aspnet5webapp:${GITHUB_SHA::8} ./WebApp/
+            az acr build --registry "${{ env.registryName }}" --image webappdotnet5:${GITHUB_SHA::8} ./WebApp/
 
       - name: Setup Kustomize
         uses: imranismail/setup-kustomize@v1
@@ -126,7 +126,7 @@ jobs:
           cd ./Kubernetes/
           echo $IMAGE
           echo ${GITHUB_SHA::8}
-          kustomize edit set image aspnet5webapp:latest=$IMAGE/aspnet5webapp:${GITHUB_SHA::8}
+          kustomize edit set image webappdotnet5:latest=$IMAGE/webappdotnet5:${GITHUB_SHA::8}
         env:
           IMAGE: ${{ env.registryName }}.azurecr.io
 

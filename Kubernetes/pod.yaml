@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Pod
+metadata:
+  name: webappdotnet5
+  labels:
+    app: webappdotnet5
+spec:
+  containers:
+  - image: webappdotnet5:latest
+    name: webappdotnet5-image
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    resources:
+      requests:
+        cpu: 250m
+        memory: 500Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
