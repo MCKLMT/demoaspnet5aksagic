@@ -25,7 +25,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Create Kubernetes Cluster
+      - name: Create Resource Group
         uses: azure/CLI@v1
         with:
           azcliversion: latest
@@ -33,8 +33,23 @@ jobs:
             # create a resource group
             az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
 
+      - name: Create Azure Container Registry
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az acr create -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --sku Standard
+
+      - name: Create Kubernetes Cluster
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Get ACR id
+            acrResourceId=$(az acr show -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --query "id" -o tsv)
+
             # create an AKS cluster
-            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure --generate-ssh-keys --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}"
+            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure -x --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}" --attach-acr "$acrResourceId" --node-resource-group "${{ env.aksClusterGroupName }}-managed"
 
       - name: Set Kubernetes context
         uses: azure/aks-set-context@v1
@@ -78,13 +93,6 @@ jobs:
       - name: Helm install/upgrade AGIC
         run: |
           helm upgrade agic application-gateway-kubernetes-ingress/ingress-azure -n agic --set appgw.name="${{ env.applicationGatewayName }}",appgw.subnetPrefix="${{ env.applicationGatewaySubnetPrefix }}",armAuth.type=aadPodIdentity,armAuth.identityResourceID="${{ env.identityResourceId }}",armAuth.identityClientID="${{ env.identityClientId }}",rbac.enabled=true --create-namespace
-
-      - name: Create Azure Container Registry
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az acr create -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --sku Standard
 
   Deploy_Application:
     needs: Deploy_Infrastructure
