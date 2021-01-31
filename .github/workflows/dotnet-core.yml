@@ -56,14 +56,10 @@ jobs:
             echo "identityClientId=$identityClientId" >> $GITHUB_ENV
             echo "identityResourceId=$identityResourceId" >> $GITHUB_ENV
 
-            echo $identityClientId
-
             az role assignment create --role Contributor --assignee-object-id "$identityPrincipalId" --scope "$nodeResourceGroupId"
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v1
-        with:
-          version: "default" # default is latest stable
+      - name: Helm tool installer
+        uses: Azure/setup-helm@v1
 
       - name: helm Update repo
         uses: azure/CLI@v1
