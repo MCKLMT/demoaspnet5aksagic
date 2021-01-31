@@ -37,7 +37,7 @@ jobs:
             # az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure --generate-ssh-keys --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}"
 
             # get AKS credentials
-            # az aks get-credentials -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}"
+            az aks get-credentials -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}"
 
       - name: Create AGIC identity
         uses: azure/CLI@v1
@@ -68,7 +68,12 @@ jobs:
           helm repo update
 
       - name: helm install/upgrade AAD Pod Identity
-        run: helm install aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+
+            helm install aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true
 
       - name: helm install/upgrade AGIC
         run: |
