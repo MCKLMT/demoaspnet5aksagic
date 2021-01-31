@@ -48,8 +48,11 @@ jobs:
             # Get ACR id
             acrResourceId=$(az acr show -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --query "id" -o tsv)
 
+            # Install preview extension to get the capability to specify --node-resource-group
+            az extension add --name aks-preview
+
             # create an AKS cluster
-            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure -x --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}" --attach-acr "$acrResourceId"
+            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure -x --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}" --attach-acr "$acrResourceId" --node-resource-group "${{ env.aksClusterGroupName }}-managed"
 
       - name: Set Kubernetes context
         uses: azure/aks-set-context@v1
