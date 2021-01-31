@@ -31,10 +31,10 @@ jobs:
           azcliversion: latest
           inlineScript: |
             # create a resource group
-            # az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
+            az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
 
             # create an AKS cluster
-            # az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure --generate-ssh-keys --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}"
+            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure --generate-ssh-keys --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}"
 
       - name: Set Kubernetes context
         uses: azure/aks-set-context@v1
@@ -134,10 +134,4 @@ jobs:
           inlineScript: |
             az aks install-cli
             az aks get-credentials -g ${{ env.aksClusterGroupName }} -n ${{ env.aksClusterName }}
-
-      - name: Deploy application with Kubectl
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
             kubectl apply -f ./Kubernetes/output.yaml
