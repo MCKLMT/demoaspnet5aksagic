@@ -65,19 +65,19 @@ jobs:
       - name: Helm tool installer
         uses: Azure/setup-helm@v1
 
-      - name: helm Update repo
+      - name: Helm Update repo
         run: |
           helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts
           helm repo add application-gateway-kubernetes-ingress https://appgwingress.blob.core.windows.net/ingress-azure-helm-package/
           helm repo update
 
-      - name: helm install/upgrade AAD Pod Identity
+      - name: Helm install/upgrade AAD Pod Identity
         run: |
-          helm install aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true
+          helm install aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true --create-namespace
 
-      - name: helm install/upgrade AGIC
+      - name: Helm install/upgrade AGIC
         run: |
-          helm install agic application-gateway-kubernetes-ingress/ingress-azure -n agic --set appgw.name="${{ env.applicationGatewayName }}",appgw.subnetPrefix="${{ env.applicationGatewaySubnetPrefix }}",armAuth.type=aadPodIdentity,armAuth.identityResourceID="${{ env.identityResourceId }}",armAuth.identityClientID="${{ env.identityClientId }}",rbac.enabled=true
+          helm install agic application-gateway-kubernetes-ingress/ingress-azure -n agic --set appgw.name="${{ env.applicationGatewayName }}",appgw.subnetPrefix="${{ env.applicationGatewaySubnetPrefix }}",armAuth.type=aadPodIdentity,armAuth.identityResourceID="${{ env.identityResourceId }}",armAuth.identityClientID="${{ env.identityClientId }}",rbac.enabled=true --create-namespace
 
       - name: Create Azure Container Registry
         uses: azure/CLI@v1
