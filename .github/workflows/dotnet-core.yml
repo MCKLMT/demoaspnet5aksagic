@@ -15,6 +15,7 @@ jobs:
       aksClusterName: "demoaspnet5aksagic"
       applicationGatewayName: "agic"
       applicationGatewaySubnetPrefix: "10.1.0.0/16"
+      agicIdentityName: agic-identity
       registryName: "demoaspnet5aksacr"
       location: "France Central"
 
@@ -30,13 +31,13 @@ jobs:
           azcliversion: latest
           inlineScript: |
             # create a resource group
-            az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
+            # az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
 
             # create an AKS cluster
-            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure --generate-ssh-keys --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}"
+            # az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure --generate-ssh-keys --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}"
 
             # get AKS credentials
-            az aks get-credentials -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}"
+            # az aks get-credentials -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}"
 
       - name: Create AGIC identity
         uses: azure/CLI@v1
@@ -47,10 +48,10 @@ jobs:
             nodeResourceGroupName=$(az aks show -n ${{ env.aksClusterName }} -g ${{ env.aksClusterGroupName }} --query "nodeResourceGroup" -o tsv)
             nodeResourceGroupId=$(az group show -g $nodeResourceGroupName --query "id" -o tsv)
 
-            az identity create -n $(agicIdentityName) -g $nodeResourceGroupName -l "${{ env.location }}"
-            identityPrincipalId=$(az identity show -n $(agicIdentityName) -g $nodeResourceGroupName --query "principalId" -o tsv)
-            identityResourceId=$(az identity show -n $(agicIdentityName) -g $nodeResourceGroupName --query "id" -o tsv)
-            identityClientId=$(az identity show -n $(agicIdentityName) -g $nodeResourceGroupName --query "clientId" -o tsv)
+            az identity create -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" -l "${{ env.location }}"
+            identityPrincipalId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "principalId" -o tsv)
+            identityResourceId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "id" -o tsv)
+            identityClientId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "clientId" -o tsv)
 
             echo "identityClientId=$identityClientId" >> $GITHUB_ENV
             echo "identityResourceId=$identityResourceId" >> $GITHUB_ENV
