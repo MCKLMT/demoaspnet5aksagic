@@ -84,7 +84,7 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
-            az acr create -n MyRegistry -g MyResourceGroup --sku Standard
+            az acr create -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --sku Standard
 
   Deploy_Application:
     needs: Deploy_Infrastructure
