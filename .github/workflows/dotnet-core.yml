@@ -1,0 +1,151 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  Deploy_Infrastructure:
+    runs-on: ubuntu-20.04
+
+    env:
+      aksClusterGroupName: "demoaspnet5aksagic-rg"
+      aksClusterName: "demoaspnet5aksagic"
+      applicationGatewayName: "agic"
+      applicationGatewaySubnetPrefix: "10.1.0.0/16"
+      registryName: "demoaspnet5aksacr"
+      location: "France Central"
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Kubernetes Cluster
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # create a resource group
+            az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
+
+            # create an AKS cluster
+            az aks create -g "${{ env.aksClusterGroupName }}"" -n "${{ env.aksClusterName }}"" --node-count 3 --network-plugin azure --generate-ssh-keys --service-principal ${{ secrets.CLIENTID }} --client-secret ${{ secrets.CLIENTSECRET }}
+
+            # get AKS credentials
+            az aks get-credentials --resource-group "${{ env.aksClusterGroupName }}" --name "${{ env.aksClusterName }}"
+
+      - name: Create AGIC identity
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Create identity in agent pool's resource group
+            nodeResourceGroupName=$(az aks show -n ${{ env.aksClusterName }} -g ${{ env.aksClusterGroupName }} --query "nodeResourceGroup" -o tsv)
+            nodeResourceGroupId=$(az group show -g $nodeResourceGroupName --query "id" -o tsv)
+
+            az identity create -n $(agicIdentityName) -g $nodeResourceGroupName -l "${{ env.location }}"
+            identityPrincipalId=$(az identity show -n $(agicIdentityName) -g $nodeResourceGroupName --query "principalId" -o tsv)
+            identityResourceId=$(az identity show -n $(agicIdentityName) -g $nodeResourceGroupName --query "id" -o tsv)
+            identityClientId=$(az identity show -n $(agicIdentityName) -g $nodeResourceGroupName --query "clientId" -o tsv)
+
+            echo "identityClientId=$identityClientId" >> $GITHUB_ENV
+            echo "identityResourceId=$identityResourceId" >> $GITHUB_ENV
+
+            echo $identityClientId
+
+            az role assignment create --role Contributor --assignee-object-id "$identityPrincipalId" --scope "$nodeResourceGroupId"
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: "default" # default is latest stable
+
+      - name: helm Update repo
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts
+            helm repo add application-gateway-kubernetes-ingress https://appgwingress.blob.core.windows.net/ingress-azure-helm-package/
+            helm repo update
+
+      - name: helm install/upgrade AAD Pod Identity
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            helm install aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true
+
+      - name: helm install/upgrade AGIC
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            helm install agic application-gateway-kubernetes-ingress/ingress-azure -n agic --set appgw.name="${{ env.applicationGatewayName }}",appgw.subnetPrefix="${{ env.applicationGatewaySubnetPrefix }}",armAuth.type=aadPodIdentity,armAuth.identityResourceID="${{ env.identityResourceId }}",armAuth.identityClientID="${{ env.identityClientId }}",rbac.enabled=true
+
+      - name: Create Azure Container Registry
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az acr create -n MyRegistry -g MyResourceGroup --sku Standard
+
+  Deploy_Application:
+    needs: Deploy_Infrastructure
+    runs-on: ubuntu-20.04
+
+    env:
+      aksClusterGroupName: "demoaspnet5aksagic-rg"
+      aksClusterName: "demoaspnet5aksagic"
+      registryName: "demoaspnet5aksacr"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build image with Azure Container Registry
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az acr build --registry "${{ env.registryName }}" --image aspnet5webapp:${GITHUB_SHA::8} ./WebApp/
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v1
+
+      - name: Kustomize edit
+        run: |
+          cd ./Kubernetes/
+          echo $IMAGE
+          echo ${GITHUB_SHA::8}
+          kustomize edit set image aspnet5webapp:latest=$IMAGE/aspnet5webapp:${GITHUB_SHA::8}
+        env:
+          IMAGE: ${{ env.registryName }}.azurecr.io
+
+      - name: Kustomize build
+        run: |
+          kustomize build ./Kubernetes >> ./Kubernetes/output.yaml
+          cat ./Kubernetes/output.yaml
+
+      - name: Install Kubectl and deploy
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az aks install-cli
+            az aks get-credentials -g ${{ env.aksClusterGroupName }} -n ${{ env.aksClusterName }}
+
+      - name: Deploy application with Kubectl
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            kubectl apply -f ./Kubernetes/output.yaml
