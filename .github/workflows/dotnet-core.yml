@@ -88,11 +88,11 @@ jobs:
 
       - name: Helm install/upgrade AAD Pod Identity
         run: |
-          helm install aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true --create-namespace
+          helm upgrade aad-pod-identity aad-pod-identity/aad-pod-identity -n aad-pod-identity --set rbac.enabled=true --create-namespace -i
 
       - name: Helm install/upgrade AGIC
         run: |
-          helm install agic application-gateway-kubernetes-ingress/ingress-azure -n agic --set appgw.name="${{ env.applicationGatewayName }}",appgw.subnetPrefix="${{ env.applicationGatewaySubnetPrefix }}",armAuth.type=aadPodIdentity,armAuth.identityResourceID="${{ env.identityResourceId }}",armAuth.identityClientID="${{ env.identityClientId }}",rbac.enabled=true --create-namespace
+          helm upgrade agic application-gateway-kubernetes-ingress/ingress-azure -n agic --set appgw.name="${{ env.applicationGatewayName }}",appgw.subnetPrefix="${{ env.applicationGatewaySubnetPrefix }}",armAuth.type=aadPodIdentity,armAuth.identityResourceID="${{ env.identityResourceId }}",armAuth.identityClientID="${{ env.identityClientId }}",rbac.enabled=true --create-namespace -i
 
   Deploy_Application:
     needs: Deploy_Infrastructure
