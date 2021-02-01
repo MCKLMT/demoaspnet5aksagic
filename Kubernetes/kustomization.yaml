@@ -1,7 +1,7 @@
 
 resources:
 - namespace.yaml
-- pod.yaml
+- deployment.yaml
 - service.yaml
 - ingress.yaml
 

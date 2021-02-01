@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webappdotnet5-deployment
+  namespace: webappdotnet5
+  labels:
+    app: webappdotnet5
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webappdotnet5
+  template:
+    metadata:
+      labels:
+        app: webappdotnet5
+    spec:
+      containers:
+      - name: webappdotnet5
+        image: webappdotnet5:latest
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 400m
+            memory: 200Mi
+          requests:
+            cpu: 250m
+            memory: 100Mi
