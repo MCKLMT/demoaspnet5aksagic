@@ -26,33 +26,23 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Create Resource Group
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            # create a resource group
-            az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
+        run: |
+          az group create -g "${{ env.aksClusterGroupName }}" -l "${{ env.location }}"
 
       - name: Create Azure Container Registry
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az acr create -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --sku Standard
+        run: |
+          az acr create -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --sku Standard
 
       - name: Create Kubernetes Cluster
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            # Get ACR id
-            acrResourceId=$(az acr show -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --query "id" -o tsv)
+        run: |
+          # Get ACR id
+          acrResourceId=$(az acr show -n "${{ env.registryName }}" -g "${{ env.aksClusterGroupName }}" --query "id" -o tsv)
 
-            # Install preview extension to get the capability to specify --node-resource-group
-            az extension add --name aks-preview
+          # Install preview extension to get the capability to specify --node-resource-group
+          az extension add --name aks-preview
 
-            # create an AKS cluster
-            az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure -x --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}" --attach-acr "$acrResourceId" --node-resource-group "${{ env.aksClusterGroupName }}-managed" --enable-addons monitoring
+          # create an AKS cluster
+          az aks create -g "${{ env.aksClusterGroupName }}" -n "${{ env.aksClusterName }}" -c 3 --network-plugin azure -x --service-principal "${{ secrets.CLIENTID }}" --client-secret "${{ secrets.CLIENTSECRET }}" --attach-acr "$acrResourceId" --node-resource-group "${{ env.aksClusterGroupName }}-managed" --enable-addons monitoring
 
       - name: Set Kubernetes context
         uses: azure/aks-set-context@v1
@@ -62,23 +52,20 @@ jobs:
           resource-group: ${{ env.aksClusterGroupName }}
 
       - name: Create AGIC identity
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            # Create identity in agent pool's resource group
-            nodeResourceGroupName=$(az aks show -n ${{ env.aksClusterName }} -g ${{ env.aksClusterGroupName }} --query "nodeResourceGroup" -o tsv)
-            nodeResourceGroupId=$(az group show -g $nodeResourceGroupName --query "id" -o tsv)
+        run: |
+          # Create identity in agent pool's resource group
+          nodeResourceGroupName=$(az aks show -n ${{ env.aksClusterName }} -g ${{ env.aksClusterGroupName }} --query "nodeResourceGroup" -o tsv)
+          nodeResourceGroupId=$(az group show -g $nodeResourceGroupName --query "id" -o tsv)
 
-            az identity create -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" -l "${{ env.location }}"
-            identityPrincipalId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "principalId" -o tsv)
-            identityResourceId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "id" -o tsv)
-            identityClientId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "clientId" -o tsv)
+          az identity create -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" -l "${{ env.location }}"
+          identityPrincipalId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "principalId" -o tsv)
+          identityResourceId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "id" -o tsv)
+          identityClientId=$(az identity show -n "${{ env.agicIdentityName }}" -g "$nodeResourceGroupName" --query "clientId" -o tsv)
 
-            echo "identityClientId=$identityClientId" >> $GITHUB_ENV
-            echo "identityResourceId=$identityResourceId" >> $GITHUB_ENV
+          echo "identityClientId=$identityClientId" >> $GITHUB_ENV
+          echo "identityResourceId=$identityResourceId" >> $GITHUB_ENV
 
-            az role assignment create --role Contributor --assignee-object-id "$identityPrincipalId" --scope "$nodeResourceGroupId"
+          az role assignment create --role Contributor --assignee-object-id "$identityPrincipalId" --scope "$nodeResourceGroupId"
 
       - name: Helm tool installer
         uses: Azure/setup-helm@v1
@@ -115,11 +102,8 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Build image with Azure Container Registry
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az acr build --registry "${{ env.registryName }}" --image webappdotnet5:${GITHUB_SHA::8} ./WebApp/
+        run: |
+          az acr build --registry "${{ env.registryName }}" --image webappdotnet5:${GITHUB_SHA::8} ./WebApp/
 
       - name: Setup Kustomize
         uses: imranismail/setup-kustomize@v1
@@ -139,10 +123,7 @@ jobs:
           cat ./Kubernetes/output.yaml
 
       - name: Install Kubectl and deploy
-        uses: azure/CLI@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az aks install-cli
-            az aks get-credentials -g ${{ env.aksClusterGroupName }} -n ${{ env.aksClusterName }}
-            kubectl apply -f ./Kubernetes/output.yaml
+        run: |
+          az aks install-cli
+          az aks get-credentials -g ${{ env.aksClusterGroupName }} -n ${{ env.aksClusterName }}
+          kubectl apply -f ./Kubernetes/output.yaml
