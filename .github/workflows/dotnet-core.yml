@@ -67,9 +67,6 @@ jobs:
 
           az role assignment create --role Contributor --assignee-object-id "$identityPrincipalId" --scope "$nodeResourceGroupId"
 
-      - name: Helm tool installer
-        uses: Azure/setup-helm@v1
-
       - name: Helm Update repo
         run: |
           helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts
@@ -105,9 +102,6 @@ jobs:
         run: |
           az acr build --registry "${{ env.registryName }}" --image webappdotnet5:${GITHUB_SHA::8} ./WebApp/
 
-      - name: Setup Kustomize
-        uses: imranismail/setup-kustomize@v1
-
       - name: Kustomize edit
         run: |
           cd ./Kubernetes/
@@ -124,6 +118,5 @@ jobs:
 
       - name: Install Kubectl and deploy
         run: |
-          az aks install-cli
           az aks get-credentials -g ${{ env.aksClusterGroupName }} -n ${{ env.aksClusterName }}
           kubectl apply -f ./Kubernetes/output.yaml
